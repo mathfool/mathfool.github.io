@@ -72,6 +72,14 @@ out = std::move(out_wrapper);
 out_streams.emplace_back(std::move(out));
 ```
 # Clickhouse Insert语句的写入过程
+    
+Clickhouse处理来自客户端请求的代码在`void TCPHandler::runImpl()`中。在完成了一系列的前期准备之后，会进入这个
+```
+state.io = executeQuery(state.query, *query_context, false, state.stage, may_have_embedded_data);
+```
+这里executeQuery其实是解析query到语法树并且基于查询，构建一个类似于执行计划一样由input/output stream和其他结构组成的state.io。真正的数据读取和写入在executeQuery结束的时候并没有执行。而是根据state.io中in/out/pipeline的具体状态来判断需要执行什么操作。比如说一个基本的insert语句，它的in是nullptr，而out就是如上一堆嵌套的outputstream。
+
+而真正的数据写入发生在之后的`processInsertQuery`中。
 
 # 番外：C++11的shared_ptr，右值引用和move
 
