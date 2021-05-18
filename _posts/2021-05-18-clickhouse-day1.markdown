@@ -22,7 +22,7 @@ IColumn *-- COW
 </div>
 
 Clickhouse是一个典型的列存储，面向OLAP场景的数据库系统。这一点从它底层storage的设计上就可见一斑。Clickhouse数据处理的基本单元是Block，这个block内部由一系列的column组成，由ColumnsWithTypeAndName来表示。其中每个column可以简单的理解为<列名，类型，数据>的一个三元组。在类型DataType中包含了对这个类型进行序列化和反序列化的相关方法。
-```
+```C++
 class Block
 {
 private:
@@ -33,7 +33,7 @@ private:
     IndexByName index_by_name;
 
 ```
-```
+```C++
 struct ColumnWithTypeAndName
 {
     ColumnPtr column;
@@ -54,7 +54,7 @@ IBlockOutputStream <|-- ReplicatedMergeTreeBlockOutputStream
 </div>
 比如在Clickhouse在执行Insert语句写数据的时候，就会将上面的几个OutputStream串起来使用
     
-```
+```C++
 BlockOutputStreamPtr out;
 out = std::make_shared<PushingToViewsBlockOutputStream>(table, metadata_snapshot, context, query_ptr, no_destination);
 out = std::make_shared<CheckConstraintsBlockOutputStream>(query.table_id, out, out->getHeader(), metadata_snapshot->getConstraints(), context);
@@ -74,9 +74,10 @@ out_streams.emplace_back(std::move(out));
 # Clickhouse Insert语句的写入过程
     
 Clickhouse处理来自客户端请求的代码在`void TCPHandler::runImpl()`中。在完成了一系列的前期准备之后，会进入这个
-```
+```C++
 state.io = executeQuery(state.query, *query_context, false, state.stage, may_have_embedded_data);
 ```
+    
 这里executeQuery其实是解析query到语法树并且基于查询，构建一个类似于执行计划一样由input/output stream和其他结构组成的state.io。真正的数据读取和写入在executeQuery结束的时候并没有执行。而是根据state.io中in/out/pipeline的具体状态来判断需要执行什么操作。比如说一个基本的insert语句，它的in是nullptr，而out就是如上一堆嵌套的outputstream。
 
 而真正的数据写入发生在之后的`processInsertQuery`中。
@@ -95,7 +96,7 @@ shared_ptr看起来就是给对象加上了引用计数，当引用计数归零�
 
     
 关于右值引用和move，注意下面的语句：
-```
+```C++
 T&& b = a
 ```
 那再使用的时候还是要move一下，因为b被表示出来了，就变成了左值。所以上面那段outputstream的代码里面`out_streams.emplace_back(std::move(out))`中的std::move并不能
