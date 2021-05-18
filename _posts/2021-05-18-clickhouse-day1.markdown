@@ -80,6 +80,7 @@ out_streams.emplace_back(std::move(out));
 shared_ptr看起来就是给对象加上了引用计数，当引用计数归零的时候销毁对象。还有另外的一种职能指针叫unique_ptr，相当于shared_ptr且引用计数<=1。不能被复制，只能被转移(move)。
 那右值引用又是个啥呢(Rvalue Reference)? 书里面是这么写的
 > In the C++ lingo, the temporaries are called Rvalues because they can only appear on the right side in an assignment.
+
 看起来，Rvalues就是临时变量啊。
     
 那std::move是干啥的呢？简单的说就是std::move了之后的object，被宣布为没用了，通常情况下，里面的值也会被清理掉或者是置为某种初始的状态。那么作为开发者，通常会重用传入对象已有的数据去构造新的对象。std::move的前因后果，使用场景和具体实现有人写了一本书，叫《C++ Move Semantics - The Complete Guide》，作者是Nicolai M. Josuttis. 这哥们是C++标准委员会的成员，写了一堆C++相关的书籍。这本书又大量的实例，通俗易懂。
