@@ -6,13 +6,23 @@ categories: clickhouse
 ---
 
 # Clickhouse的存储
-昨天说到数据写入的基本数据结构是Block。那么这个数据block写到磁盘上又是啥样子呢？调试代码发现数据是由MergeTreeDataPartWriterOnDisk写入的，这个东西有两个具体的实现，一个叫compact，一个叫wide
+昨天说到数据写入的基本数据结构是Block。那么这个数据block写到磁盘上又是啥样子呢？调试代码发现数据是由MergeTreeDataPartWriterOnDisk写入的，这个东西有两个具体的实现，一个叫compact，一个叫wide。相对应的，每一种DataPart都对应一个DataPartWriter
 
 <div class="mermaid">
 classDiagram
 IMergeTreeDataPartWriter <|-- MergeTreeDataPartWriterOnDisk
 MergeTreeDataPartWriterOnDisk <|-- MergeTreeDataPartWriterCompact
 MergeTreeDataPartWriterOnDisk <|-- MergeTreeDataPartWriterWide
+
+IMergeTreeDataPart <|-- MergeTreeDataPartCompact
+IMergeTreeDataPart <|-- MergeTreeDataPartMemory
+IMergeTreeDataPart <|-- MergeTreeDataPartWide
+</div>
+
+<div class="mermaid">
+classDiagram
+IMergeTreeDataPart *-- IMergeTreeDataPartWriter
+IMergeTreeDataPart *-- IMergeTreeDataPartReader
 </div>
 
 根据文档，这两种格式可以通过下面的参数来控制。也就是说，如果不设这些参数，默认就是wide，那么每一个insert，将产生一个文件。如果设了，那么可以将一堆小的插入写在一起。（顺序咋办？）
@@ -20,4 +30,27 @@ MergeTreeDataPartWriterOnDisk <|-- MergeTreeDataPartWriterWide
 
 进一步看代码，在20.8.1.75版本增加了一个新的参数，可以再设一个叫min_bytes_for_compact_part，这样似乎是会写到memory里, 在第一次merge的时候，再写到磁盘。这个过程非常类似HBASE的compaction。总的来说这一类的数据库都是这个过程，比如rocksdb也是这样。Clickhouse也实现了一个WAL，在写in-memory的同时写这个WAL，这样clickhouse重新启动的时候会用这个WAL重建这个in-memory的block。如果再想提升一丢丢的性能，可以把WAL关了，就是会有丢数据的风险。嗯不过感觉这个东西还不是太稳定比如
 [这个issue](https://github.com/ClickHouse/ClickHouse/issues/17758)
+
+# 磁盘上的文件
+那么一次写入在磁盘上都会创建哪些文件？首先这个写入会创建一个目录，名字由partition_id-minblock-maxblock-level组成。随着后台的merge发生，后面三个部分的值会发生变化。在这个目录里面会有这么几个文件：
+
+* count.txt 存的是当前目录中的行数
+* columns.txt 存的是列名和他们对应的类型
+* checksums.txt 目录里面所有文件的checksum
+* default_compression_codec.txt 默认的codec
+* primary.idx primary index文件
+* [Column].bin - 每列的具体数据
+* [Column].mrk - marks文件。用来帮助快速检索数据。
+* partition.dat - 好像存的是和partition相关的数据，不知道是个啥
+* min_max_[Column].idx - 这个存的是当前目录partition key的最大最小值
+
+那么在数据量不足够的情况下，有可能所有的列都会写入
+
+* data.bin
+* data.mrk
+
+# 问题
+
+* 今天发现我们自己数据库存domain的列和存device的列的size居然是一个数量级，明天可以研究研究是为了啥。
+* 线上似乎并没有配min_bytes_for_wide_part和min_rows_for_wide_part，但是也有一些folder里面的数据呗合并写入了data.bin/data.mrk。最小的只有四五百行，而稍大一些的油279416026。
 
