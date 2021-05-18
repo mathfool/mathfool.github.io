@@ -71,6 +71,23 @@ out_wrapper->setProcessListElement(context.getProcessListElement());
 out = std::move(out_wrapper);
 out_streams.emplace_back(std::move(out));
 ```
-    
-# 番外：C++11的右值引用和Move是个什么东西
+# Clickhouse Insert语句的写入过程
 
+# 番外：C++11的shared_ptr，右值引用和move
+
+想我当年写C++的时候，还是auto_ptr的时代，右值引用也还不知道是个什么东西。
+
+shared_ptr看起来就是给对象加上了引用计数，当引用计数归零的时候销毁对象。还有另外的一种职能指针叫unique_ptr，相当于shared_ptr且引用计数<=1。不能被复制，只能被转移(move)。
+那右值引用又是个啥呢(Rvalue Reference)? 书里面是这么写的
+> In the C++ lingo, the temporaries are called Rvalues because they can only appear on the right side in an assignment.
+看起来，Rvalues就是临时变量啊。
+    
+那std::move是干啥的呢？简单的说就是std::move了之后的object，被宣布为没用了，通常情况下，里面的值也会被清理掉或者是置为某种初始的状态。那么作为开发者，通常会重用传入对象已有的数据去构造新的对象。std::move的前因后果，使用场景和具体实现有人写了一本书，叫《C++ Move Semantics - The Complete Guide》，作者是Nicolai M. Josuttis. 这哥们是C++标准委员会的成员，写了一堆C++相关的书籍。这本书又大量的实例，通俗易懂。
+
+    
+关于右值引用和move，注意下面的语句：
+```
+T&& b = a
+```
+那再使用的时候还是要move一下，因为b被表示出来了，就变成了左值。所以上面那段outputstream的代码里面`out_streams.emplace_back(std::move(out))`中的std::move并不能
+去掉。但是这段代码可以改写成`out_streams.emplace_back(std::move(out_wrapper))`，原代码不知道为啥要写成那个样子。
