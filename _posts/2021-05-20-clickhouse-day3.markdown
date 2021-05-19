@@ -59,13 +59,13 @@ void MergeTreeBlockOutputStream::write(const Block & block)
     }
 }
 ```
-* 第一步是把block根据partition分成几个子的block。
-* 第二部是把block相关的内容持久化道一个temp目录，大概长这个样子temp_insert_partition_id-minblock-maxblock-level，之后再move到正常的目录名。Merge的时候会有类似的操作，只是临时目录的名字会是merge_开头。
-** 这个具体的写入过程是在`MergeTreeDataWriter::writeTempPart`中写入的。
-** 先试对block进行了诸如sort之类的操作，然后构建了datapart对象，然后再利用这个datapart对象构建了MergedBlockOutputStream。
-** 根据上面的图，可以看到在MergedBlockOutputStream以及他的父类，也就是那个IMergedBlockOutputStream接口中，可以找到磁盘文件上每一个文件对应的对象。
-* 之后是记上加了新的part的log
-* 最后是看看是不是需要执行一下merge。根据这里的comments，应该是后台有个pool，如果能执行就执行，执行不了就算了。
+- 第一步是把block根据partition分成几个子的block。
+- 第二部是把block相关的内容持久化道一个temp目录，大概长这个样子temp_insert_partition_id-minblock-maxblock-level，之后再move到正常的目录名。Merge的时候会有类似的操作，只是临时目录的名字会是merge_开头。
+ - 这个具体的写入过程是在`MergeTreeDataWriter::writeTempPart`中写入的。
+ - 先试对block进行了诸如sort之类的操作，然后构建了datapart对象，然后再利用这个datapart对象构建了MergedBlockOutputStream。
+ - 根据上面的图，可以看到在MergedBlockOutputStream以及他的父类，也就是那个IMergedBlockOutputStream接口中，可以找到磁盘文件上每一个文件对应的对象。
+- 之后是记上加了新的part的log
+- 最后是看看是不是需要执行一下merge。根据这里的comments，应该是后台有个pool，如果能执行就执行，执行不了就算了。
 
 
 # 番外：很多类都集成的std::enable_shared_from_this是个啥
