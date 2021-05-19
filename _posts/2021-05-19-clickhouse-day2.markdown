@@ -52,5 +52,25 @@ IMergeTreeDataPart *-- IMergeTreeDataPartReader
 # 问题
 
 * 今天发现我们自己数据库存domain的列和存device的列的size居然是一个数量级，明天可以研究研究是为了啥。
+经过调查，发现device应该使用LowCardinality数据类型。根据文档，如果cardinality小于10000，那么就应该使用low cardinality。如果大于100000，那么就会有性能损失，看来可以在这方面做一些优化。这里有个小发现，数据库的默认设置下，有些类型比如int64不允许被定义为low cardinality。但是可以通过打开allow_suspicious_low_cardinality_types来允许。对于我们的case，通过改变设置，大约可以减少六成的存储。
+
 * 线上似乎并没有配min_bytes_for_wide_part和min_rows_for_wide_part，但是也有一些folder里面的数据呗合并写入了data.bin/data.mrk。最小的只有四五百行，而稍大一些的油279416026。
+这里的原因是因为在4个控制选择什么样的存储方式的选项，只有min_bytes_for_wide_part又一个default的值：10485760。可以看看选择的代码，比较的简单明了
+```C++
+MergeTreeDataPartType MergeTreeData::choosePartType(size_t bytes_uncompressed, size_t rows_count) const
+{
+    const auto settings = getSettings();
+    if (!canUsePolymorphicParts(*settings))
+        return MergeTreeDataPartType::WIDE;
+
+    if (bytes_uncompressed < settings->min_bytes_for_compact_part || rows_count < settings->min_rows_for_compact_part)
+        return MergeTreeDataPartType::IN_MEMORY;
+
+    if (bytes_uncompressed < settings->min_bytes_for_wide_part || rows_count < settings->min_rows_for_wide_part)
+        return MergeTreeDataPartType::COMPACT;
+
+    return MergeTreeDataPartType::WIDE;
+}
+```
+* 系统设置在哪里查，可以查system.settings表。Mergetree的设置在merge_tree_settings表中。
 
