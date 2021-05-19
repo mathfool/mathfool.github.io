@@ -72,5 +72,6 @@ MergeTreeDataPartType MergeTreeData::choosePartType(size_t bytes_uncompressed, s
     return MergeTreeDataPartType::WIDE;
 }
 ```
-* 系统设置在哪里查，可以查system.settings表。Mergetree的设置在merge_tree_settings表中。
+* 系统设置在哪里查，可以查system.settings表。Mergetree的设置在merge_tree_settings表中。另外MergeTree引擎的设置可以针对不同的表做改变，在建表的时候通过settings传入，具体可以看
+[这个页面](https://clickhouse.tech/docs/en/engines/table-engines/mergetree-family/mergetree/)
 
