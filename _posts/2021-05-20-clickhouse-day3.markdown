@@ -86,5 +86,9 @@ std::shared_ptr<Good> gp2 = gp1->getptr();
 ```
 上面的代码如果不继承enable_shared_from_this就会造成两次析构而崩溃。
 
-#问题：detached目录是干啥的
+# 问题：Moving目录是干啥的
+
+clickhouse可以配置多个Volumn或者多个磁盘，再配合不同的策略可以实现冷热数据分别存储。今天刚好有个人问为什么目录里面有个folder交moving。这个moving就像tmp_insert或者merge一样，是数据在两个volumn/disk之间移动时先创建的临时目录。
+
+那detached目录是干啥的
 
