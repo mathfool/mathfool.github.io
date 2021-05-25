@@ -33,4 +33,16 @@ String IDataType::getFileNameForStream(const String & column_name, const IDataTy
 }
 
 ```
-这里这个tuple_element_name就是1和2。而错误的版本这里填的是'string'和number。接近真相了。
+这里这个tuple_element_name就是1和2。而错误的版本这里填的是'string'和number。接近真相了.
+
+# 额，被fix了
+
+就在接近接近真相的时候，发现被fix了，PR再这里。https://github.com/ClickHouse/ClickHouse/pull/24464/files
+
+看起来是之前重构了很多datatype的处理，增加了可以给tuple加名字的功能改出来的bug。
+
+所以这里可以总结一条Clickhouse的best practice：
+> 要用自己的业务逻辑一套regression的query，在升级之前对clickhouse进行充分测试。另外够用的话，就不要升级。
+> 
+> 
+
