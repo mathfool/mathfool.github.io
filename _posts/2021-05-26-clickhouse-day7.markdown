@@ -31,6 +31,6 @@ ColumnLowCardinality *-- Positions
 
 另外直觉上讲，这东西似乎只能用在dimension上，而用在metrics上似乎不妥。但是在我们的测试中，许多metrics列也可以省掉75%的存储空间。当然写入会慢大约30%左右。我们测试用的值类型是Int64，而估计字典的index的长度要大大小于这个，所以会省空间。但我们又必须保留int64因为确实理论上有可能会出现如此大的值。CH有这么个参数low_cardinality_max_dictionary_size，根据文档，这个参数配的是最大的字典记录数，那么超了这个字典并不会有什么问题，只是当做一个普通的值写入，而不是写入字典值的index。假设这个metrics大部分的值在10000以下，设low_cardinality_max_dictionary_size=10000，而恰好存了1-10000（不知道这个字典可不可以手动操作，low_cardinality_max_dictionary_size是不是可以按列指定），超过的反正也会直接记录，那么可能就会有一定的性能提升。不过感觉这个地方需要进一步的调研。
 
-所以LowCardinality需要结合着那几个参数惊喜控制着使用。
+所以LowCardinality需要结合着那几个参数精细控制着使用。
 
 
