@@ -34,3 +34,5 @@ part_type: Compact
 3. 再由StorageReplciatedMergeTree中的backgroundexecutor去执行里面具体的task。比如上面的那个merge，最终会由`StorageReplicatedMergeTree::tryExecuteMerge(const LogEntry & entry)`来执行。这里面有个配置，如果配置了always_fetch_merged_part，那么merge不回被执行，而是直接去取merge好了的part。不过在这个task里面是直接返回了，不知道取回merge结果的那个是不是也是由master创建好了，这边儿直接fetch过来，如果没配置那个参数的话就会报一个duplicate block？这都是我猜的。
 
 # Replicated表的读取
+
+如果没有配置select_sequential_consistency，那就基本上一样。如果配置了select_sequential_consistency，那么读取的时候就回去zookeeper看看该有的block是不是都有。如果Quorum里面有，但part不全，就抛异常。如果有的part还没写入quorum，那么就不读。
